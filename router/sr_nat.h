@@ -6,6 +6,11 @@
 #include <time.h>
 #include <pthread.h>
 
+int nat_enabled = 0;
+int ICMP_timeout = 60;
+int TCP_established_timeout = 7440;
+int TCP_transitory_timeout = 300;
+
 typedef enum {
   nat_mapping_icmp,
   nat_mapping_tcp

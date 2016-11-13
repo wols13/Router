@@ -25,6 +25,7 @@ int sr_nat_init(struct sr_nat *nat) { /* Initializes the nat */
 
   nat->mappings = NULL;
   /* Initialize any variables here */
+  /* TODO */
 
   return success;
 }
@@ -35,6 +36,9 @@ int sr_nat_destroy(struct sr_nat *nat) {  /* Destroys the nat (free memory) */
   pthread_mutex_lock(&(nat->lock));
 
   /* free nat memory here */
+  free(nat);
+
+  ////////////////////////////////////////////////////////////////////////////
 
   pthread_kill(nat->thread, SIGKILL);
   return pthread_mutex_destroy(&(nat->lock)) &&
@@ -44,6 +48,8 @@ int sr_nat_destroy(struct sr_nat *nat) {  /* Destroys the nat (free memory) */
 
 void *sr_nat_timeout(void *nat_ptr) {  /* Periodic Timout handling */
   struct sr_nat *nat = (struct sr_nat *)nat_ptr;
+  struct sr_nat_mapping *mappings, *prev_mapping = NULL;
+  
   while (1) {
     sleep(1.0);
     pthread_mutex_lock(&(nat->lock));
@@ -51,7 +57,29 @@ void *sr_nat_timeout(void *nat_ptr) {  /* Periodic Timout handling */
     time_t curtime = time(NULL);
 
     /* handle periodic tasks here */
-
+    mappings = nat->mappings;
+    while (mappings != NULL) {
+		if (mappings->type == nat_mapping_icmp){
+			/* ICMP Timeout */
+			if (difftime(now, mappings->last_updated) >= ICMP_timeout) {
+				if (prev_mapping == NULL){
+					nat->mappings = mappings->next;
+					free(mappings);
+					mappings = nat->mappings;
+				} else {
+					prev_mapping->next = mappings->next;
+					free(mappings);
+					mappings = prev_mapping->next;
+				}
+			} else {
+				prev_mapping = mappings;
+				mappings = mappings->next;
+			}
+		} else if (mappings->type == nat_mapping_tcp) {
+			/// what we can o 			
+		}
+	}
+    
     pthread_mutex_unlock(&(nat->lock));
   }
   return NULL;

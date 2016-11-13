@@ -32,6 +32,7 @@
 #include "sr_dumper.h"
 #include "sr_router.h"
 #include "sr_rt.h"
+#include "sr_nat.h"
 
 extern char* optarg;
 
@@ -66,10 +67,11 @@ int main(int argc, char **argv)
     unsigned int topo = DEFAULT_TOPO;
     char *logfile = 0;
     struct sr_instance sr;
+    struct sr_nat nat;
 
     printf("Using %s\n", VERSION_INFO);
 
-    while ((c = getopt(argc, argv, "hs:v:p:u:t:r:l:T:")) != EOF)
+    while ((c = getopt(argc, argv, "hs:v:p:u:t:r:l:T:n:I:E:R:")) != EOF)
     {
         switch (c)
         {
@@ -101,6 +103,18 @@ int main(int argc, char **argv)
             case 'T':
                 template = optarg;
                 break;
+            case 'n':
+				nat_enabled = 1;
+				break;
+			case 'I':
+				ICMP_timeout = optarg;
+				break;
+			case 'E':
+				TCP_established_timeout = optarg;
+				break;
+			case 'R':
+				TCP_transitory_timeout = optarg;
+				break;				
         } /* switch */
     } /* -- while -- */
 
@@ -159,6 +173,15 @@ int main(int argc, char **argv)
     /* call router init (for arp subsystem etc.) */
     sr_init(&sr);
 
+	/* NAT Setup */
+	if (nat_enabled == 1){
+		if (sr_nat_init(&nat) != 0){
+			fprintf(stderr,"Error setting up NAT\n");
+            exit(1);
+		}
+	}
+	
+	
     /* -- whizbang main loop ;-) */
     while( sr_read_from_server(&sr) == 1);
 
