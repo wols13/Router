@@ -35,6 +35,7 @@
 #include "sr_nat.h"
 
 extern char* optarg;
+extern struct sr_nat nat;
 
 /*-----------------------------------------------------------------------------
  *---------------------------------------------------------------------------*/
@@ -67,7 +68,6 @@ int main(int argc, char **argv)
     unsigned int topo = DEFAULT_TOPO;
     char *logfile = 0;
     struct sr_instance sr;
-    struct sr_nat nat;
 
     printf("Using %s\n", VERSION_INFO);
 

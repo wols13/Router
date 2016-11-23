@@ -31,6 +31,51 @@ int sr_nat_init(struct sr_nat *nat) { /* Initializes the nat */
 }
 
 
+int sr_handle_nat(sr, packet, len, interface) {
+	/* IP Types
+	 * NAT Hosts:                   0
+	 * NAT Box Internal IP:         1
+	 * NAT Box External IP:         2
+	 * None Of The Above (Outside): 3 */
+	uint32_t *source_ip, *dest_ip; 
+	int source_ip_position, dest_ip_position;
+	
+	struct sr_ethernet_hdr* ether_hdr = (struct sr_ethernet_hdr*)packet;
+	
+	/* Check is packet is an IP or ARP, the obtain src & dst ip */
+	if (ntohs(ether_hdr->ether_type) == ethertype_arp) {
+		struct sr_arp_hdr *arp_hdr = (struct sr_arp_hdr*)(*packet + sizeof(struct sr_ethernet_hdr));
+		source_ip = (uint32_t *)arp_hdr->ar_sip;
+		dest_ip = (uint32_t *)arp_hdr->ar_tip;
+	} else {
+		struct sr_ip_hdr* ip_hdr = (struct sr_ip_hdr*)(packet + sizeof(struct sr_ethernet_hdr));
+		source_ip = (uint32_t *)ip_hdr->ip_src;
+		dest_ip = (uint32_t *)ip_hdr->ip_dst;
+	}
+	
+	//Source is either type 0 or 3
+	if ((source_ip & 4294967040) == 167772416){
+		source_ip_position = 0;
+	} else {
+		source_ip_position = 3
+	}
+	
+	//Destination is either type 1, 2 or 3
+	if (dest_ip == 167772427){
+		dest_ip_position = 1;
+	} else if (dest_ip == 2889876225) {
+		dest_ip_position = 2;
+	} else {
+		dest_ip_position = 3;
+	}
+	
+	//NAT hosts pinging Internal 
+	//NAT hosts pinging External
+	//Outside to NAT hosts
+	//NAT hosts to Outside
+}
+
+
 int sr_nat_destroy(struct sr_nat *nat) {  /* Destroys the nat (free memory) */
 
   pthread_mutex_lock(&(nat->lock));
