@@ -76,6 +76,22 @@
 #endif
 #define ICMP_DATA_SIZE 28
 
+/* Structure of a TCP header
+ */
+struct sr_tcp_hdr {
+  uint16_t tcp_src_port;
+  uint16_t tcp_dst_port;
+  uint32_t tcp_seq_num;
+  uint32_t tcp_ack_num;
+  unsigned int tcp_data_offset:4;
+  unsigned int tcp_reserved:6;
+  unsigned int tcp_control_bits:6;
+  uint16_t tcp_window;
+  uint16_t tcp_checksum;
+  uint16_t tcp_urgent_pointer;
+  
+} __attribute__ ((packed)) ;
+typedef struct sr_tcp_hdr sr_tcp_hdr_t;
 
 /* Structure of a ICMP header
  */

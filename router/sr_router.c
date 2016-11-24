@@ -102,14 +102,12 @@ int sr_handlepacket(struct sr_instance* sr,
   /* Extract ethernet header */
   ether_hdr = (struct sr_ethernet_hdr*)packet;
   
-  if (nat_enabled == 1) {
-	  sr_handle_nat(sr, packet, len, interface);
-  }
-
   /* Need to check if it contains an ARP or IP packet */
   if (ntohs(ether_hdr->ether_type) == ethertype_arp) {
 		handle_arpIncomingMessage(&packet, sr, len);
 		return 0;
+  } else if (nat_enabled == 1) {
+	  sr_handle_nat(sr, packet);
   }
   
 	/* Extract IP header */

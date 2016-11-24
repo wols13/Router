@@ -31,48 +31,70 @@ int sr_nat_init(struct sr_nat *nat) { /* Initializes the nat */
 }
 
 
-int sr_handle_nat(sr, packet, len, interface) {
-	/* IP Types
+int sr_handle_nat(sr, packet) {
+	/* IP Topology Positions
 	 * NAT Hosts:                   0
 	 * NAT Box Internal IP:         1
 	 * NAT Box External IP:         2
 	 * None Of The Above (Outside): 3 */
-	uint32_t *source_ip, *dest_ip; 
 	int source_ip_position, dest_ip_position;
+	uint16_t target_port;
+	struct sr_nat_mapping lookup_result;
+	sr_nat_mapping_type mapping_type;
 	
-	struct sr_ethernet_hdr* ether_hdr = (struct sr_ethernet_hdr*)packet;
 	
-	/* Check is packet is an IP or ARP, the obtain src & dst ip */
-	if (ntohs(ether_hdr->ether_type) == ethertype_arp) {
-		struct sr_arp_hdr *arp_hdr = (struct sr_arp_hdr*)(*packet + sizeof(struct sr_ethernet_hdr));
-		source_ip = (uint32_t *)arp_hdr->ar_sip;
-		dest_ip = (uint32_t *)arp_hdr->ar_tip;
+	struct sr_ip_hdr* ip_hdr = (struct sr_ip_hdr*)(packet + sizeof(struct sr_ethernet_hdr));
+	
+	if (ip_hdr->ip_p == ip_protocol_icmp) {
+		mapping_type = nat_mapping_icmp;
+		struct sr_icmp_hdr* icmp_hdr = (struct sr_icmp_hdr*)(packet + sizeof(struct sr_ethernet_hdr) + sizeof(struct sr_ip_hdr));
+		target_port = ip_hdr->ip_id;
 	} else {
-		struct sr_ip_hdr* ip_hdr = (struct sr_ip_hdr*)(packet + sizeof(struct sr_ethernet_hdr));
-		source_ip = (uint32_t *)ip_hdr->ip_src;
-		dest_ip = (uint32_t *)ip_hdr->ip_dst;
+		mapping_type = nat_mapping_tcp;
+		struct sr_tcp_hdr* tcp_hdr = (struct sr_tcp_hdr*)(packet + sizeof(struct sr_ethernet_hdr) + sizeof(struct sr_ip_hdr));
+		target_port = tcp_hdr->tcp_dst_port;
 	}
 	
 	//Source is either type 0 or 3
-	if ((source_ip & 4294967040) == 167772416){
+	if ((ip_hdr->ip_src & 4294967040) == 167772416){
 		source_ip_position = 0;
 	} else {
 		source_ip_position = 3
 	}
-	
+
 	//Destination is either type 1, 2 or 3
-	if (dest_ip == 167772427){
+	if (ip_hdr->ip_dst == 167772427){
 		dest_ip_position = 1;
-	} else if (dest_ip == 2889876225) {
+	} else if (ip_hdr->ip_dst == 2889876225) {
 		dest_ip_position = 2;
+	} else if ((ip_hdr->ip_dst & 4294967040) == 167772416){
+		dest_ip_position = 0;
 	} else {
 		dest_ip_position = 3;
 	}
 	
-	//NAT hosts pinging Internal 
-	//NAT hosts pinging External
 	//Outside to NAT hosts
-	//NAT hosts to Outside
+	if (source_ip_position == 3 && dest_ip_position == 0) {
+		lookup_result = sr_nat_lookup_external(nat, target_port, mapping_type);
+		////////////////////////////////////////////////////////////////////////WAIT COUPLE SECONDS BEFORE DROP
+		/* Drop packet if no mapping exists */
+		if (lookup_result == NULL) {
+			fprintf(stderr,"Error: No existing mappings, dropping packet.\n");
+            exit(1);
+		}
+		
+		//Replace dest
+	} else if (source_ip_position == 0 && dest_ip_position == 3) {  //NAT hosts to Outside
+		//Replace source
+		lookup_result = sr_nat_lookup_internal(nat, ip_hdr->ip_src, uint16_t aux_int, mapping_type);
+		//OR
+		sr_nat_insert_mapping(nat, ip_hdr->ip_src, uint16_t aux_int, mapping_type);
+	}
+	
+	//ALL THESE IFS CAN BE GREATLY REDUCED, IM BEING VERY EXPLICIT SO I MYSELF DONT FORGET MY THOUGHT PROCESS
+	//AT THE VERY LEAST, THE ENTIRE FUNCTIONS COULD BE BROKEN INTO MEANINGFUL HELPERS
+	//ADD THE NAT BOX'S INTERFACES TO THE ROUTERS INTERFACE SO THEY CAN BE PINGED LIKE IN A1
+	//FIND A WAY TO REPLACE THESE MAGIC NUMBERS
 }
 
 
