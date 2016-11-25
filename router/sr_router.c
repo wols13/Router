@@ -89,7 +89,7 @@ int sr_handlepacket(struct sr_instance* sr,
   struct sr_if *nexthopIface;
   uint16_t tempChecksum;
   uint8_t* icmp_reply;
-  int type, icmp_reply_len;
+  int type, icmp_reply_len, nat_result;
 
   /* Check len meets minimum size */
   if (len < sizeof(struct sr_ethernet_hdr) ){
@@ -106,8 +106,6 @@ int sr_handlepacket(struct sr_instance* sr,
   if (ntohs(ether_hdr->ether_type) == ethertype_arp) {
 		handle_arpIncomingMessage(&packet, sr, len);
 		return 0;
-  } else if (nat_enabled == 1) {
-	  sr_handle_nat(sr, packet);
   }
   
 	/* Extract IP header */
@@ -121,7 +119,18 @@ int sr_handlepacket(struct sr_instance* sr,
 		fprintf(stderr , "** Error: checksum mismatch \n");
 		return -1;
 	}
-
+	
+	/* If NAT enabled, update packet metadata */
+	if (sr->nat_enabled == 1) {
+	    nat_result = sr_nat_update_headers(sr, packet);
+		if (nat_result == -1) {
+			return -1;
+		} else (nat_result == -2) {
+			create_send_icmpMessage(sr, packet, len, 3, 3, interface);
+			return -1;
+		}
+	}
+	
 	/* Decrement TTL */
 	(ip_hdr->ip_ttl)--;
 

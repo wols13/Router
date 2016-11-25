@@ -2,14 +2,18 @@
 #ifndef SR_NAT_TABLE_H
 #define SR_NAT_TABLE_H
 
+#define NAT_HOST_MASK 4278190080
+#define NAT_HOST_PREFIX 167772160
+
 #include <inttypes.h>
 #include <time.h>
 #include <pthread.h>
 
-int nat_enabled = 0;
-int ICMP_timeout = 60;
-int TCP_established_timeout = 7440;
-int TCP_transitory_timeout = 300;
+typedef enum {
+  nat_position_interface, /* NAT Box Interface IP */
+  nat_position_host, /* NAT Hosts */
+  nat_position_server /* Server IP */
+} sr_nat_ip_position;
 
 typedef enum {
   nat_mapping_icmp,
@@ -17,9 +21,16 @@ typedef enum {
   /* nat_mapping_udp, */
 } sr_nat_mapping_type;
 
+typedef enum {
+  nat_conn_state_established,
+  nat_conn_state_transitory
+} sr_nat_connection_state;
+
 struct sr_nat_connection {
   /* add TCP connection state data members here */
-
+  uint32_t server_ip;
+  time_t last_updated;
+  sr_nat_connection_state state;
   struct sr_nat_connection *next;
 };
 
@@ -35,7 +46,9 @@ struct sr_nat_mapping {
 };
 
 struct sr_nat {
-  /* add any fields here */
+  int ICMP_timeout;
+  int TCP_established_timeout;
+  int TCP_transitory_timeout;
   struct sr_nat_mapping *mappings;
 
   /* threading */

@@ -35,7 +35,6 @@
 #include "sr_nat.h"
 
 extern char* optarg;
-extern struct sr_nat nat;
 
 /*-----------------------------------------------------------------------------
  *---------------------------------------------------------------------------*/
@@ -70,6 +69,7 @@ int main(int argc, char **argv)
     struct sr_instance sr;
 
     printf("Using %s\n", VERSION_INFO);
+    sr.nat_enabled = 0;
 
     while ((c = getopt(argc, argv, "hs:v:p:u:t:r:l:T:n:I:E:R:")) != EOF)
     {
@@ -104,16 +104,19 @@ int main(int argc, char **argv)
                 template = optarg;
                 break;
             case 'n':
-				nat_enabled = 1;
+				sr.nat_enabled = 1;
+				sr.nat.ICMP_timeout = 60;
+				sr.nat.TCP_established_timeout = 7440;
+				sr.nat.TCP_transitory_timeout = 300;
 				break;
 			case 'I':
-				ICMP_timeout = optarg;
+				sr.nat.ICMP_timeout = optarg;
 				break;
 			case 'E':
-				TCP_established_timeout = optarg;
+				sr.nat.TCP_established_timeout = optarg;
 				break;
 			case 'R':
-				TCP_transitory_timeout = optarg;
+				sr.nat.TCP_transitory_timeout = optarg;
 				break;				
         } /* switch */
     } /* -- while -- */
@@ -174,8 +177,8 @@ int main(int argc, char **argv)
     sr_init(&sr);
 
 	/* NAT Setup */
-	if (nat_enabled == 1){
-		if (sr_nat_init(&nat) != 0){
+	if (sr.nat_enabled == 1){
+		if (sr_nat_init(&(sr.nat)) != 0){
 			fprintf(stderr,"Error setting up NAT\n");
             exit(1);
 		}

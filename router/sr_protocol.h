@@ -118,6 +118,17 @@ struct sr_icmp_t3_hdr {
 typedef struct sr_icmp_t3_hdr sr_icmp_t3_hdr_t;
 
 
+/* Structure of a type8 ICMP header
+ */
+struct sr_icmp_t8_hdr {
+  uint8_t icmp_type;
+  uint8_t icmp_code;
+  uint16_t icmp_sum;
+  uint16_t icmp_id;
+  uint16_t icmp_seq_num;
+
+} __attribute__ ((packed)) ;
+typedef struct sr_icmp_t3_hdr sr_icmp_t3_hdr_t;
 
 
 /*

@@ -30,71 +30,122 @@ int sr_nat_init(struct sr_nat *nat) { /* Initializes the nat */
   return success;
 }
 
+sr_nat_ip_position * sr_nat_get_ip_positions(struct sr_instance *sr, struct sr_ip_hdr* ip_hdr) {
+	static sr_nat_ip_position result[2];
+	struct sr_if* currInterface = 0;
+	
+	//Source is either type nat_position_host or nat_position_outside
+	if ((ip_hdr->ip_src & NAT_HOST_MASK) == NAT_HOST_PREFIX){
+		result[0] = nat_position_host;
+	} else {
+		result[0] = nat_position_server;
+	}
+	
+	//Destination is can be any position
+	currInterface = sr->if_list;
+	while (currInterface != NULL) {
+		if (currInterface->ip == ip_hdr->ip_dst) {
+			result[1] = nat_position_interface;
+			return result;
+		}
+		currInterface = currInterface->next;
+	}
 
-int sr_handle_nat(sr, packet) {
-	/* IP Topology Positions
-	 * NAT Hosts:                   0
-	 * NAT Box Internal IP:         1
-	 * NAT Box External IP:         2
-	 * None Of The Above (Outside): 3 */
-	int source_ip_position, dest_ip_position;
-	uint16_t target_port;
+	result[1] = nat_position_server;
+	
+	return result;
+}
+
+int sr_nat_update_headers(struct sr_instance *sr, uint8_t *packet) {
+	uint16_t target_port, source_port;
+	sr_nat_ip_position *ip_positions, source_ip_position, dest_ip_position;
 	struct sr_nat_mapping lookup_result;
 	sr_nat_mapping_type mapping_type;
-	
+	struct sr_icmp_t8_hdr* icmp_hdr;
+	struct sr_tcp_hdr* tcp_hdr;
+	struct sr_nat_mapping *mappings;
+	struct sr_nat_connection *conns;
 	
 	struct sr_ip_hdr* ip_hdr = (struct sr_ip_hdr*)(packet + sizeof(struct sr_ethernet_hdr));
 	
 	if (ip_hdr->ip_p == ip_protocol_icmp) {
+		icmp_hdr = (struct sr_icmp_t8_hdr*)(ip_hdr + sizeof(struct sr_ip_hdr));
 		mapping_type = nat_mapping_icmp;
-		struct sr_icmp_hdr* icmp_hdr = (struct sr_icmp_hdr*)(packet + sizeof(struct sr_ethernet_hdr) + sizeof(struct sr_ip_hdr));
-		target_port = ip_hdr->ip_id;
+		target_port = icmp_hdr->icmp_id;
+		source_port = icmp_hdr->icmp_id;
 	} else {
+		tcp_hdr = (struct sr_tcp_hdr*)(ip_hdr + sizeof(struct sr_ip_hdr));
 		mapping_type = nat_mapping_tcp;
-		struct sr_tcp_hdr* tcp_hdr = (struct sr_tcp_hdr*)(packet + sizeof(struct sr_ethernet_hdr) + sizeof(struct sr_ip_hdr));
 		target_port = tcp_hdr->tcp_dst_port;
+		source_port = tcp_hdr->tcp_src_port;
 	}
 	
-	//Source is either type 0 or 3
-	if ((ip_hdr->ip_src & 4294967040) == 167772416){
-		source_ip_position = 0;
-	} else {
-		source_ip_position = 3
-	}
-
-	//Destination is either type 1, 2 or 3
-	if (ip_hdr->ip_dst == 167772427){
-		dest_ip_position = 1;
-	} else if (ip_hdr->ip_dst == 2889876225) {
-		dest_ip_position = 2;
-	} else if ((ip_hdr->ip_dst & 4294967040) == 167772416){
-		dest_ip_position = 0;
-	} else {
-		dest_ip_position = 3;
-	}
+	/* Determine whether src and dst are inside or outside to the NAT box */
+	ip_positions = sr_nat_get_ip_positions(sr, ip_hdr);
+	source_ip_position = ip_positions[0];
+	dest_ip_position = ip_positions[1];
 	
-	//Outside to NAT hosts
-	if (source_ip_position == 3 && dest_ip_position == 0) {
-		lookup_result = sr_nat_lookup_external(nat, target_port, mapping_type);
-		////////////////////////////////////////////////////////////////////////WAIT COUPLE SECONDS BEFORE DROP
+	/* From server to NAT hosts */
+	if (source_ip_position == nat_position_server && dest_ip_position == nat_position_interface) {
+		lookup_result = sr_nat_lookup_external(&(sr->nat), target_port, mapping_type);
+		
 		/* Drop packet if no mapping exists */
 		if (lookup_result == NULL) {
-			fprintf(stderr,"Error: No existing mappings, dropping packet.\n");
-            exit(1);
+			/* If ICMP, drop immediately */
+			if (mapping_type == nat_mapping_icmp) {
+				fprintf(stderr,"Error: No existing mappings, dropping packet.\n");
+				return -1;
+			}
+			
+			/* If TCP, wait 6 seconds for outbound SYN */
+			sleep(6.0);
+			
+			mappings = sr->nat.mappings;
+			while (mappings != NULL) {
+				conns = mappings->conns;
+				while (conns != NULL) {
+					if (conns->server_ip == ip_hdr->ip_src) {
+						return -1;
+					}
+					conns = conns->next;
+				}
+				mappings = mappings->next;
+			}
+			
+			/* -2: Send ICMP (3, 3) back to sender */
+			return -2;
 		}
 		
-		//Replace dest
-	} else if (source_ip_position == 0 && dest_ip_position == 3) {  //NAT hosts to Outside
-		//Replace source
-		lookup_result = sr_nat_lookup_internal(nat, ip_hdr->ip_src, uint16_t aux_int, mapping_type);
-		//OR
-		sr_nat_insert_mapping(nat, ip_hdr->ip_src, uint16_t aux_int, mapping_type);
+		/* Replace destination IP */
+		memcpy(ip_hdr->ip_dst, lookup_result->ip_int, sizeof(uint32_t));
+		
+		/* Replace dest port */
+		if (mapping_type == nat_mapping_icmp) {
+			memcpy(icmp_hdr->icmp_id, lookup_result->aux_int, sizeof(uint16_t));
+		} else {
+			memcpy(tcp_hdr->tcp_dst_port, lookup_result->aux_int, sizeof(uint16_t));
+		}
+	/* From NAT hosts to server */
+	} else if (source_ip_position == nat_position_host && dest_ip_position == nat_position_server) { 
+		lookup_result = sr_nat_lookup_internal(&(sr->nat), ip_hdr->ip_src, source_port, mapping_type);
+		
+		/* If no existing mapping, make one */
+		if (lookup_result == NULL) {
+			lookup_result = sr_nat_insert_mapping(&(sr->nat), ip_hdr->ip_src, source_port, mapping_type);
+		}
+		
+		/* Replace source IP */
+		memcpy(ip_hdr->ip_src, lookup_result->ip_ext, sizeof(uint32_t));
+		
+		/* Replace src port */
+		if (mapping_type == nat_mapping_icmp) {
+			memcpy(icmp_hdr->icmp_id, lookup_result->aux_ext, sizeof(uint16_t));
+		} else {
+			memcpy(tcp_hdr->tcp_src_port, lookup_result->aux_ext, sizeof(uint16_t));
+		}
 	}
 	
-	//ALL THESE IFS CAN BE GREATLY REDUCED, IM BEING VERY EXPLICIT SO I MYSELF DONT FORGET MY THOUGHT PROCESS
-	//AT THE VERY LEAST, THE ENTIRE FUNCTIONS COULD BE BROKEN INTO MEANINGFUL HELPERS
-	//ADD THE NAT BOX'S INTERFACES TO THE ROUTERS INTERFACE SO THEY CAN BE PINGED LIKE IN A1
-	//FIND A WAY TO REPLACE THESE MAGIC NUMBERS
+	return 0;
 }
 
 
@@ -104,8 +155,6 @@ int sr_nat_destroy(struct sr_nat *nat) {  /* Destroys the nat (free memory) */
 
   /* free nat memory here */
   free(nat);
-
-  ////////////////////////////////////////////////////////////////////////////
 
   pthread_kill(nat->thread, SIGKILL);
   return pthread_mutex_destroy(&(nat->lock)) &&
@@ -143,7 +192,7 @@ void *sr_nat_timeout(void *nat_ptr) {  /* Periodic Timout handling */
 				mappings = mappings->next;
 			}
 		} else if (mappings->type == nat_mapping_tcp) {
-			/// what we can o 			
+			// what we can o
 		}
 	}
     
