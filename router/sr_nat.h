@@ -49,6 +49,8 @@ struct sr_nat {
   int ICMP_timeout;
   int TCP_established_timeout;
   int TCP_transitory_timeout;
+  uint32_t ip_ext;
+  uint16_t next_port;
   struct sr_nat_mapping *mappings;
 
   /* threading */
@@ -58,8 +60,12 @@ struct sr_nat {
   pthread_t thread;
 };
 
+#include "sr_router.h"
 
 int   sr_nat_init(struct sr_nat *nat);     /* Initializes the nat */
+sr_nat_ip_position * sr_nat_get_ip_positions(struct sr_instance *sr, struct sr_ip_hdr* ip_hdr);
+int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet);
+struct sr_nat_connection *add_connection(struct sr_nat *nat, struct sr_nat_mapping *mapping, uint32_t server_ip, int initializer);
 int   sr_nat_destroy(struct sr_nat *nat);  /* Destroys the nat (free memory) */
 void *sr_nat_timeout(void *nat_ptr);  /* Periodic Timout */
 

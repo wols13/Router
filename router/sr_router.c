@@ -22,7 +22,6 @@
 #include "sr_protocol.h"
 #include "sr_arpcache.h"
 #include "sr_utils.h"
-#include "sr_nat.h"
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -122,10 +121,11 @@ int sr_handlepacket(struct sr_instance* sr,
 	
 	/* If NAT enabled, update packet metadata */
 	if (sr->nat_enabled == 1) {
-	    nat_result = sr_nat_update_headers(sr, packet);
+		create_send_icmpMessage(sr, packet, len, 3, 3, interface);
+	    nat_result = sr_nat_update_headers(&sr, &packet);
 		if (nat_result == -1) {
 			return -1;
-		} else (nat_result == -2) {
+		} else if (nat_result == -2) {
 			create_send_icmpMessage(sr, packet, len, 3, 3, interface);
 			return -1;
 		}

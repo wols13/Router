@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     printf("Using %s\n", VERSION_INFO);
     sr.nat_enabled = 0;
 
-    while ((c = getopt(argc, argv, "hs:v:p:u:t:r:l:T:n:I:E:R:")) != EOF)
+    while ((c = getopt(argc, argv, "hs:v:p:u:t:r:l:T:nI:E:R:")) != EOF)
     {
         switch (c)
         {
@@ -110,13 +110,13 @@ int main(int argc, char **argv)
 				sr.nat.TCP_transitory_timeout = 300;
 				break;
 			case 'I':
-				sr.nat.ICMP_timeout = optarg;
+				sr.nat.ICMP_timeout = atoi((char *) optarg);
 				break;
 			case 'E':
-				sr.nat.TCP_established_timeout = optarg;
+				sr.nat.TCP_established_timeout = atoi((char *) optarg);
 				break;
 			case 'R':
-				sr.nat.TCP_transitory_timeout = optarg;
+				sr.nat.TCP_transitory_timeout = atoi((char *) optarg);
 				break;				
         } /* switch */
     } /* -- while -- */
@@ -182,6 +182,11 @@ int main(int argc, char **argv)
 			fprintf(stderr,"Error setting up NAT\n");
             exit(1);
 		}
+		printf("Yay!");
+		/* Set ip_ext */
+		sr.nat.ip_ext = sr_get_interface(&sr, "eth2")->ip;
+		/* Set next port */
+		sr.nat.next_port = 1024;
 	}
 	
 	
