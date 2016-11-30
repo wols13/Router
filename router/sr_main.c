@@ -172,21 +172,18 @@ int main(int argc, char **argv)
       /* Read from specified routing table */
       sr_load_rt_wrap(&sr, rtable);
     }
-
     /* call router init (for arp subsystem etc.) */
     sr_init(&sr);
-
 	/* NAT Setup */
 	if (sr.nat_enabled == 1){
 		if (sr_nat_init(&(sr.nat)) != 0){
 			fprintf(stderr,"Error setting up NAT\n");
             exit(1);
 		}
-		printf("Yay!");
-		/* Set ip_ext */
-		sr.nat.ip_ext = sr_get_interface(&sr, "eth2")->ip;
-		/* Set next port */
+		printf("Yay!\n");
+                /* Set next port */
 		sr.nat.next_port = 1024;
+		printf("I HATE THIS\n");
 	}
 	
 	
@@ -334,6 +331,7 @@ int sr_verify_routing_table(struct sr_instance* sr)
 } /* -- sr_verify_routing_table -- */
 
 static void sr_load_rt_wrap(struct sr_instance* sr, char* rtable) {
+    printf("1111111111111111111111\n");  
     if(sr_load_rt(sr, rtable) != 0) {
         fprintf(stderr,"Error setting up routing table from file %s\n",
                 rtable);
@@ -345,4 +343,5 @@ static void sr_load_rt_wrap(struct sr_instance* sr, char* rtable) {
     printf("---------------------------------------------\n");
     sr_print_routing_table(sr);
     printf("---------------------------------------------\n");
+    printf("222222222222222222222222\n");
 }

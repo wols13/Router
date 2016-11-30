@@ -90,6 +90,8 @@ int sr_handlepacket(struct sr_instance* sr,
   uint8_t* icmp_reply;
   int type, icmp_reply_len, nat_result;
 
+  sr->nat.ip_ext = sr_get_interface(sr, "eth2")->ip;
+
   /* Check len meets minimum size */
   if (len < sizeof(struct sr_ethernet_hdr) ){
 	/* Send ICMP reply to sender of type 12 code 2 (Bad length) */
@@ -121,7 +123,7 @@ int sr_handlepacket(struct sr_instance* sr,
 	
 	/* If NAT enabled, update packet metadata */
 	if (sr->nat_enabled == 1) {
-		create_send_icmpMessage(sr, packet, len, 3, 3, interface);
+	    printf("Hello\n");
 	    nat_result = sr_nat_update_headers(&sr, &packet);
 		if (nat_result == -1) {
 			return -1;
