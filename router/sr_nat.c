@@ -35,13 +35,13 @@ int sr_nat_init(struct sr_nat *nat) { /* Initializes the nat */
   return success;
 }
 
-sr_nat_ip_position * sr_nat_get_ip_positions(struct sr_instance *sr, struct sr_ip_hdr* ip_hdr) {
+sr_nat_ip_position * sr_nat_get_ip_positions(struct sr_instance *sr, struct sr_ip_hdr* ip_hdr, char* interface) {
 	static sr_nat_ip_position result[2];
 	struct sr_if* currInterface = 0;
 	
 	/* Source is either type nat_position_host or nat_position_outside */
 	print_hdr_ip((uint8_t *)ip_hdr);
-	if ((ntohl(ip_hdr->ip_src) >> 24) == 10){
+	if (strncmp(interface, "eth1", 4) == 0) {
 		result[0] = nat_position_host;
 	} else {
 		result[0] = nat_position_server;
@@ -50,9 +50,7 @@ sr_nat_ip_position * sr_nat_get_ip_positions(struct sr_instance *sr, struct sr_i
 	/* Destination is can be any position */
 	currInterface = sr->if_list;
 	while (currInterface != NULL) {
-		sr_print_if(currInterface);
 		if (currInterface->ip == ip_hdr->ip_dst) {
-			printf("DADFSDFSFDDAFS\n");
 			result[1] = nat_position_interface;
 			return result;
 		}
@@ -64,8 +62,8 @@ sr_nat_ip_position * sr_nat_get_ip_positions(struct sr_instance *sr, struct sr_i
 	return result;
 }
 
-int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet) {
-	uint16_t target_port, source_port;
+int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet, char* interface) {
+	uint16_t target_port, source_port, tempChecksum;
 	sr_nat_ip_position *ip_positions, source_ip_position, dest_ip_position;
 	struct sr_nat_mapping *lookup_result;
 	sr_nat_mapping_type mapping_type;
@@ -90,7 +88,7 @@ int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet) {
 	}
 	printf("A\n");	
 	/* Determine whether src and dst are inside or outside to the NAT box */
-	ip_positions = sr_nat_get_ip_positions(*sr, ip_hdr);
+	ip_positions = sr_nat_get_ip_positions(*sr, ip_hdr, interface);
 	source_ip_position = ip_positions[0];
 	dest_ip_position = ip_positions[1];
 	printf("%d - %d\n", source_ip_position, dest_ip_position);
@@ -99,7 +97,6 @@ int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet) {
 		printf("Fffffffffffffffffffffffff %d\n", ((*sr)->nat).mappings->aux_ext);
                 printf("BAAH\n");
 		lookup_result = sr_nat_lookup_external(&((*sr)->nat), target_port, mapping_type);
-		printf("Mapping internal IP %d\n", lookup_result->ip_int);
 		
 		/* Drop packet if no mapping exists */
 		if (lookup_result == NULL) {
@@ -134,9 +131,17 @@ int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet) {
 		/* Replace dest port */
 		if (mapping_type == nat_mapping_icmp) {
 			icmp_hdr->icmp_id = lookup_result->aux_int;
+			/* Recalculate checksum here */
+			icmp_hdr->icmp_sum = 0;
+			tempChecksum = cksum(icmp_hdr, ip_hdr->ip_len - sizeof(struct sr_ip_hdr));
+			icmp_hdr->icmp_sum = tempChecksum;
 		} else {
 			tcp_hdr->tcp_dst_port = lookup_result->aux_int;
 			add_connection(&((*sr)->nat), lookup_result, ip_hdr->ip_src, 1);
+			/* Recalculate checksum here */
+			tcp_hdr->tcp_checksum = 0;
+			tempChecksum = cksum(tcp_hdr, ip_hdr->ip_len - sizeof(struct sr_ip_hdr));
+			tcp_hdr->tcp_checksum = tempChecksum;
 		}
 		printf("BQ\n");
                 print_hdrs(*packet, 98);
@@ -162,11 +167,19 @@ int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet) {
 		/* Replace src port */
 		if (mapping_type == nat_mapping_icmp) {
 			icmp_hdr->icmp_id = lookup_result->aux_ext;
+			/* Recalculate checksum here */
+			icmp_hdr->icmp_sum = 0;
+			tempChecksum = cksum(icmp_hdr, ip_hdr->ip_len - sizeof(struct sr_ip_hdr));
+			icmp_hdr->icmp_sum = tempChecksum;
                         printf("WOLE %d\n", icmp_hdr->icmp_id);
 		printf("D%d\n", ((*sr)->nat).mappings->aux_ext);
 		} else {
 			tcp_hdr->tcp_src_port = lookup_result->aux_ext;
 			add_connection(&((*sr)->nat), lookup_result, ip_hdr->ip_dst, 0);
+			/* Recalculate checksum here */
+			tcp_hdr->tcp_checksum = 0;
+			tempChecksum = cksum(tcp_hdr, ip_hdr->ip_len - sizeof(struct sr_ip_hdr));
+			tcp_hdr->tcp_checksum = tempChecksum;
 		printf("E%d\n", ((*sr)->nat).mappings->aux_ext);
 		}
 		printf("F%d\n", ((*sr)->nat).mappings->aux_ext);
