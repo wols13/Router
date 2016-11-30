@@ -93,7 +93,7 @@ int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet, char* inter
 
 	/* From server to NAT hosts */
 	if (source_ip_position == nat_position_server && dest_ip_position == nat_position_interface) {
-		lookup_result = sr_nat_lookup_external(&((*sr)->nat), ntohs(target_port), mapping_type);
+		lookup_result = sr_nat_lookup_external(&((*sr)->nat), target_port, mapping_type);
 		
 		/* Drop packet if no mapping exists */
 		if (lookup_result == NULL) {
@@ -270,6 +270,7 @@ struct sr_nat_mapping *sr_nat_lookup_external(struct sr_nat *nat,
 		}
 
 		if(copy->next == NULL){
+			pthread_mutex_unlock(&(nat->lock));
 			return NULL;
 		}
 		memcpy(copy, copy->next, sizeof(struct sr_nat_mapping));
@@ -302,6 +303,7 @@ struct sr_nat_mapping *sr_nat_lookup_internal(struct sr_nat *nat,
 		}
 
 		if (copy->next == NULL){
+			pthread_mutex_unlock(&(nat->lock));
 			return NULL;
 		}
 		memcpy(copy, copy->next, sizeof(struct sr_nat_mapping));
