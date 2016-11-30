@@ -85,7 +85,7 @@ int sr_handlepacket(struct sr_instance* sr,
   struct sr_if* currInterface = 0;
   struct sr_arpentry* ARPentry = 0;
   struct sr_arpreq* ARPreq = 0;
-  struct sr_if *nexthopIface;
+  struct sr_if *nexthopIface, *nat_iface;
   uint16_t tempChecksum;
   uint8_t* icmp_reply;
   int type, icmp_reply_len, nat_result;
@@ -98,6 +98,7 @@ int sr_handlepacket(struct sr_instance* sr,
     return -1;
   }
 
+	    printf("Hello\n");
   /* Extract ethernet header */
   ether_hdr = (struct sr_ethernet_hdr*)packet;
   
@@ -107,11 +108,17 @@ int sr_handlepacket(struct sr_instance* sr,
 		return 0;
   }
   
+	    printf("Hello\n");
 	/* Extract IP header */
 	ip_hdr = (struct sr_ip_hdr*)(packet + sizeof(struct sr_ethernet_hdr));
 
-	sr->nat.ip_ext = longestPrefixMatch(sr, ip_hdr->ip_dst)->ip;
-	
+	    printf("Yellow\n");
+
+	nat_iface = longestPrefixMatch(sr, ip_hdr->ip_dst);
+	if (nat_iface != NULL) 	{
+           sr->nat.ip_ext = nat_iface->ip;
+        }
+	    printf("Hello\n");
 	/* validate checksum */
 	tempChecksum = ip_hdr->ip_sum;
 	ip_hdr->ip_sum = 0;
@@ -121,6 +128,7 @@ int sr_handlepacket(struct sr_instance* sr,
 		return -1;
 	}
 	
+	    printf("Hello\n");
 	/* If NAT enabled, update packet metadata */
 	if (sr->nat_enabled == 1) {
 	    printf("Hello\n");
