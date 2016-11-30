@@ -128,10 +128,8 @@ int sr_handlepacket(struct sr_instance* sr,
 		return -1;
 	}
 	
-	    printf("Hello\n");
 	/* If NAT enabled, update packet metadata */
 	if (sr->nat_enabled == 1) {
-	    printf("Hello\n");
 	    nat_result = sr_nat_update_headers(&sr, &packet, interface);
 		if (nat_result == -1) {
 			return -1;
