@@ -138,14 +138,18 @@ int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet) {
 			tcp_hdr->tcp_dst_port = lookup_result->aux_int;
 			add_connection(&((*sr)->nat), lookup_result, ip_hdr->ip_src, 1);
 		}
-		printf("B\n");
+		printf("BQ\n");
                 print_hdrs(*packet, 98);
 	/* From NAT hosts to server */
 	} else if (source_ip_position == nat_position_host && dest_ip_position == nat_position_server) { 
+		printf("BW\n");
 		lookup_result = sr_nat_lookup_internal(&((*sr)->nat), ip_hdr->ip_src, source_port, mapping_type);
+		printf("BE\n");
 		/* If no existing mapping, make one */
 		if (lookup_result == NULL) {
+		printf("BR\n");
 			lookup_result = sr_nat_insert_mapping(&((*sr)->nat), ip_hdr->ip_src, source_port, mapping_type);
+		printf("BT\n");
 		}
 		
 		printf("A%d\n", ((*sr)->nat).mappings->aux_ext);
@@ -317,22 +321,43 @@ struct sr_nat_mapping *sr_nat_lookup_internal(struct sr_nat *nat,
   pthread_mutex_lock(&(nat->lock));
 
   /* handle lookup here, malloc and assign to copy. */
+	printf("CQ\n");
 	struct sr_nat_mapping *copy = malloc(sizeof(struct sr_nat_mapping));
+	printf("CW\n");
 	if (nat->mappings) {
+	printf("CE\n");
 		memcpy(copy, nat->mappings, sizeof(struct sr_nat_mapping));
+	printf("CR\n");
 	} else {
+	printf("CT\n");
 		pthread_mutex_unlock(&(nat->lock));
+	printf("CY\n");
 		return NULL;
+	printf("CU\n");
 	}
 	  
 	while (copy) {
+	printf("CI\n");
+        printf("%d\n", copy->aux_int);
+        printf("%d\n", aux_int);
+        print_addr_ip_int(copy->ip_int);
+        print_addr_ip_int(ip_int);
 		if (copy->ip_int == ip_int && copy->aux_int == aux_int) {
+	printf("CO\n");
 			break;
+	printf("CP\n");
 		}
+	printf("CA\n");
+                if (copy->next == NULL){
+                    return NULL;
+                }
 		memcpy(copy, copy->next, sizeof(struct sr_nat_mapping));
+	printf("CS\n");
 	}
 
+	printf("CD\n");
   pthread_mutex_unlock(&(nat->lock));
+	printf("CF\n");
   return copy;
 }
 
