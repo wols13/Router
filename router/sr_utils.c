@@ -196,14 +196,16 @@ struct sr_if* longestPrefixMatch(struct sr_instance *sr, uint32_t ip) {
 	while (curr_rt_entry != NULL) {
 		/* Check mask, figure out how large match must be */
 		for (mask_bit_count = 0; mask_bit_count < 32; mask_bit_count++) {
-			if (!(((curr_rt_entry->mask.s_addr) << mask_bit_count) >> 31)) {
+			if (!(((ntohl(curr_rt_entry->mask.s_addr)) << mask_bit_count) >> 31)) {
 				break;
 			}
 		}
 			
 		/* Take destination ip of entry and compare with input ip using mask */
+		printf("RTABLE ENTRY DEST ADDR:\n");
+		print_addr_ip_int(curr_rt_entry->dest.s_addr);
 		for (i = 0; i < mask_bit_count; i++) {
-			if (!(((curr_rt_entry->dest.s_addr << i) >> 31) == ((ip << i) >> 31))) {
+			if (!(((ntohl(curr_rt_entry->dest.s_addr) << i) >> 31) == ((ntohl(ip) << i) >> 31))) {
 				break;
 			}
 		}

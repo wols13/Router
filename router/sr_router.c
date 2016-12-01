@@ -113,7 +113,8 @@ int sr_handlepacket(struct sr_instance* sr,
 	ip_hdr = (struct sr_ip_hdr*)(packet + sizeof(struct sr_ethernet_hdr));
 
 	    printf("Yellow\n");
-
+	printf("IP DST IS: ");
+	print_addr_ip_int(ip_hdr->ip_dst);
 	nat_iface = longestPrefixMatch(sr, ip_hdr->ip_dst);
 	if (nat_iface != NULL) 	{
            sr->nat.ip_ext = nat_iface->ip;
