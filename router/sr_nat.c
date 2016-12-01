@@ -93,7 +93,7 @@ int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet, char* inter
 
 	/* From server to NAT hosts */
 	if (source_ip_position == nat_position_server && dest_ip_position == nat_position_interface) {
-		lookup_result = sr_nat_lookup_external(&((*sr)->nat), target_port, mapping_type);
+		lookup_result = sr_nat_lookup_external(&((*sr)->nat), ntohs(target_port), mapping_type);
 		
 		/* Drop packet if no mapping exists */
 		if (lookup_result == NULL) {
@@ -137,12 +137,12 @@ int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet, char* inter
 		
 		/* Replace src port */
 		if (mapping_type == nat_mapping_icmp) {
-			icmp_hdr->icmp_id = lookup_result->aux_ext;
+			icmp_hdr->icmp_id = ntohs(lookup_result->aux_ext);
 			icmp_hdr->icmp_sum = 0;
 			tempChecksum = cksum(icmp_hdr, ip_hdr->ip_len - sizeof(struct sr_ip_hdr));
 			icmp_hdr->icmp_sum = tempChecksum;
 		} else {
-			tcp_hdr->tcp_src_port = lookup_result->aux_ext;
+			tcp_hdr->tcp_src_port = ntohs(lookup_result->aux_ext);
 			add_connection(&((*sr)->nat), lookup_result, ip_hdr->ip_dst, 0);
 			tcp_hdr->tcp_checksum = 0;
 			tempChecksum = cksum(tcp_hdr, ip_hdr->ip_len - sizeof(struct sr_ip_hdr));
