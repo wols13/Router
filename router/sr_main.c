@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     printf("Using %s\n", VERSION_INFO);
     sr.nat_enabled = 0;
 
-    while ((c = getopt(argc, argv, "hs:v:p:u:t:r:l:T:n:I:E:R:")) != EOF)
+    while ((c = getopt(argc, argv, "hs:v:p:u:t:r:l:T:nI:E:R:")) != EOF)
     {
         switch (c)
         {
@@ -110,13 +110,13 @@ int main(int argc, char **argv)
 				sr.nat.TCP_transitory_timeout = 300;
 				break;
 			case 'I':
-				sr.nat.ICMP_timeout = optarg;
+				sr.nat.ICMP_timeout = atoi((char *) optarg);
 				break;
 			case 'E':
-				sr.nat.TCP_established_timeout = optarg;
+				sr.nat.TCP_established_timeout = atoi((char *) optarg);
 				break;
 			case 'R':
-				sr.nat.TCP_transitory_timeout = optarg;
+				sr.nat.TCP_transitory_timeout = atoi((char *) optarg);
 				break;				
         } /* switch */
     } /* -- while -- */
@@ -172,16 +172,18 @@ int main(int argc, char **argv)
       /* Read from specified routing table */
       sr_load_rt_wrap(&sr, rtable);
     }
-
     /* call router init (for arp subsystem etc.) */
     sr_init(&sr);
-
 	/* NAT Setup */
 	if (sr.nat_enabled == 1){
 		if (sr_nat_init(&(sr.nat)) != 0){
 			fprintf(stderr,"Error setting up NAT\n");
             exit(1);
 		}
+		printf("Yay!\n");
+                /* Set next port */
+		sr.nat.next_port = 1024;
+		printf("I HATE THIS\n");
 	}
 	
 	
@@ -329,6 +331,7 @@ int sr_verify_routing_table(struct sr_instance* sr)
 } /* -- sr_verify_routing_table -- */
 
 static void sr_load_rt_wrap(struct sr_instance* sr, char* rtable) {
+    printf("1111111111111111111111\n");  
     if(sr_load_rt(sr, rtable) != 0) {
         fprintf(stderr,"Error setting up routing table from file %s\n",
                 rtable);
@@ -340,4 +343,5 @@ static void sr_load_rt_wrap(struct sr_instance* sr, char* rtable) {
     printf("---------------------------------------------\n");
     sr_print_routing_table(sr);
     printf("---------------------------------------------\n");
+    printf("222222222222222222222222\n");
 }

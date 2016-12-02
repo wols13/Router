@@ -202,17 +202,17 @@ struct sr_if* longestPrefixMatch(struct sr_instance *sr, uint32_t ip) {
 		}
 			
 		/* Take destination ip of entry and compare with input ip using mask */
-		for (i = 0; i < mask_bit_count; i++) {
-			if (!(((curr_rt_entry->dest.s_addr << i) >> 31) == ((ip << i) >> 31))) {
+		for (i = 0; i < 32; i++) {
+			if (!(((ntohl(curr_rt_entry->dest.s_addr) << i) >> 31) == ((ntohl(ip) << i) >> 31))) {
 				break;
 			}
 		}
 
-		if (i == mask_bit_count) {
+		if (i >= mask_bit_count) {
 			/* If mask entry's mask is greater than the previous entry's mask
 			  then it becomes the new longest entry */
-			if (mask_bit_count > longestMaskCount) {
-				longestMaskCount = mask_bit_count;
+			if (i > longestMaskCount) {
+				longestMaskCount = i;
 				longest_rt_entry = curr_rt_entry;
 			}
 		}
