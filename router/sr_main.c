@@ -139,7 +139,7 @@ int main(int argc, char **argv)
     { sr_set_user(&sr); }
     else
     { strncpy(sr.user, user, 32); }
-
+    printf("Loading routing table\n");
     /* -- set up file pointer for logging of raw packets -- */
     if(logfile != 0)
     {

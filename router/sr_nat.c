@@ -64,7 +64,7 @@ sr_nat_ip_position * sr_nat_get_ip_positions(struct sr_instance *sr, struct sr_i
 int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet, char* interface) {
 	uint16_t target_port, source_port, tempChecksum;
 	sr_nat_ip_position *ip_positions, source_ip_position, dest_ip_position;
-	struct sr_nat_mapping *lookup_result;
+	struct sr_nat_mapping *lookup_result = NULL;
 	sr_nat_mapping_type mapping_type;
 	struct sr_icmp_t8_hdr* icmp_hdr;
 	struct sr_tcp_hdr* tcp_hdr;
@@ -209,7 +209,7 @@ int sr_nat_destroy(struct sr_nat *nat) {  /* Destroys the nat (free memory) */
 }
 
 void *sr_nat_timeout(void *nat_ptr) {  /* Periodic Timout handling */
-  struct sr_nat *nat = (struct sr_nat *)nat_ptr;
+  /* struct sr_nat *nat = (struct sr_nat *)nat_ptr;
   struct sr_nat_mapping *mappings, *prev_mapping = NULL;
   
   while (1) {
@@ -218,11 +218,11 @@ void *sr_nat_timeout(void *nat_ptr) {  /* Periodic Timout handling */
 
     time_t curtime = time(NULL);
 
-    /* handle periodic tasks here */
+    * handle periodic tasks here
     mappings = nat->mappings;
     while (mappings != NULL) {
 		if (mappings->type == nat_mapping_icmp){
-			/* ICMP Timeout */
+			* ICMP Timeout
 			if (difftime(curtime, mappings->last_updated) >= nat->ICMP_timeout) {
 				if (prev_mapping == NULL){
 					nat->mappings = mappings->next;
@@ -243,7 +243,7 @@ void *sr_nat_timeout(void *nat_ptr) {  /* Periodic Timout handling */
 	}
     
     pthread_mutex_unlock(&(nat->lock));
-  }
+  }*/
   return NULL;
 }
 
