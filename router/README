@@ -1,5 +1,10 @@
 Authors: Ken Wei Lee, Ayodeji Oyewole, Hanifa Vanthaliwala
 
-Handle req  -> Reveives packets
+Handle req  -> Retrieves packets
 	Check if ip or arp
+		if ip && nat enabled
+			Pass packet to NAT helper
+			Update header ports and IPs
 		handle appropriately with replies (icmp, arp) or forwarding
+			
+

@@ -38,6 +38,18 @@ void sr_init(struct sr_instance* sr)
 
     /* Initialize cache and cache cleanup thread */
     sr_arpcache_init(&(sr->cache));
+    
+    /* NAT Setup */
+	if (sr->nat_enabled == 1){
+		if (sr_nat_init(&(sr->nat)) != 0){
+			fprintf(stderr,"Error setting up NAT\n");
+            exit(1);
+		}
+
+        /* Set next port */
+		sr->nat.next_port = 1024;
+	}
+    
 
     pthread_attr_init(&(sr->attr));
     pthread_attr_setdetachstate(&(sr->attr), PTHREAD_CREATE_JOINABLE);
@@ -46,9 +58,6 @@ void sr_init(struct sr_instance* sr)
     pthread_t thread;
 
     pthread_create(&thread, &(sr->attr), sr_arpcache_timeout, sr);
-
-    /* Add initialization code here! */
-    /* TODO BIG BIG BIG TODO: Maybe?  MAYBE?!!?*/
 
 } /* -- sr_init -- */
 
@@ -98,7 +107,7 @@ int sr_handlepacket(struct sr_instance* sr,
     return -1;
   }
 
-	    printf("Hello\n");
+
   /* Extract ethernet header */
   ether_hdr = (struct sr_ethernet_hdr*)packet;
   
@@ -108,18 +117,16 @@ int sr_handlepacket(struct sr_instance* sr,
 		return 0;
   }
   
-	    printf("Hello\n");
+
 	/* Extract IP header */
 	ip_hdr = (struct sr_ip_hdr*)(packet + sizeof(struct sr_ethernet_hdr));
 
-	    printf("Yellow\n");
-	printf("IP DST IS: ");
-	print_addr_ip_int(ip_hdr->ip_dst);
+	
 	nat_iface = longestPrefixMatch(sr, ip_hdr->ip_dst);
 	if (nat_iface != NULL) 	{
            sr->nat.ip_ext = nat_iface->ip;
         }
-	    printf("Hello\n");
+        
 	/* validate checksum */
 	tempChecksum = ip_hdr->ip_sum;
 	ip_hdr->ip_sum = 0;

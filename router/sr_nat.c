@@ -46,7 +46,7 @@ sr_nat_ip_position * sr_nat_get_ip_positions(struct sr_instance *sr, struct sr_i
 		result[0] = nat_position_server;
 	}
 	
-	/* Destination is can be any position */
+	/* Destination can be a server or one of our interfaces */
 	currInterface = sr->if_list;
 	while (currInterface != NULL) {
 		if (currInterface->ip == ip_hdr->ip_dst) {
@@ -64,7 +64,7 @@ sr_nat_ip_position * sr_nat_get_ip_positions(struct sr_instance *sr, struct sr_i
 int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet, char* interface) {
 	uint16_t target_port, source_port, tempChecksum;
 	sr_nat_ip_position *ip_positions, source_ip_position, dest_ip_position;
-	struct sr_nat_mapping *lookup_result;
+	struct sr_nat_mapping *lookup_result = NULL;
 	sr_nat_mapping_type mapping_type;
 	struct sr_icmp_t8_hdr* icmp_hdr;
 	struct sr_tcp_hdr* tcp_hdr;
@@ -142,19 +142,21 @@ int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet, char* inter
 			icmp_hdr->icmp_sum = tempChecksum;
 		} else {
 			tcp_hdr->tcp_src_port = ntohs(lookup_result->aux_ext);
-			add_connection(&((*sr)->nat), lookup_result, ip_hdr->ip_dst, 0);
+			/* add_connection(&((*sr)->nat), lookup_result, ip_hdr->ip_dst, 0);*/
 			tcp_hdr->tcp_checksum = 0;
 			tempChecksum = cksum(tcp_hdr, ntohs(ip_hdr->ip_len) - ip_size);
 			tcp_hdr->tcp_checksum = tempChecksum;
 		}
 	}
 
-	/* free(lookup_result); */
+	if (lookup_result) {
+		free(lookup_result);
+	}
 	return 0;
 }
 
 struct sr_nat_connection *add_connection(struct sr_nat *nat, struct sr_nat_mapping *mapping, uint32_t server_ip, int initializer){
-	/* Initializer: (0) NAT Host, (1) Server */
+	/* Initializer: (0) NAT Host, (1) Server 
 	pthread_mutex_lock(&(nat->lock));
 	
 	struct sr_nat_connection *new_conn = malloc(sizeof(struct sr_nat_connection));
@@ -189,7 +191,7 @@ struct sr_nat_connection *add_connection(struct sr_nat *nat, struct sr_nat_mappi
 		conn = conn->next;
 	}
 	pthread_mutex_unlock(&(nat->lock));
-	/* Should never get here */
+	 Should never get here */
 	return NULL;
 }
 
@@ -207,7 +209,7 @@ int sr_nat_destroy(struct sr_nat *nat) {  /* Destroys the nat (free memory) */
 }
 
 void *sr_nat_timeout(void *nat_ptr) {  /* Periodic Timout handling */
- /* struct sr_nat *nat = (struct sr_nat *)nat_ptr;
+  /* struct sr_nat *nat = (struct sr_nat *)nat_ptr;
   struct sr_nat_mapping *mappings, *prev_mapping = NULL;
   
   while (1) {
@@ -216,11 +218,11 @@ void *sr_nat_timeout(void *nat_ptr) {  /* Periodic Timout handling */
 
     time_t curtime = time(NULL);
 
-    * handle periodic tasks here *
+    * handle periodic tasks here
     mappings = nat->mappings;
     while (mappings != NULL) {
 		if (mappings->type == nat_mapping_icmp){
-			* ICMP Timeout *
+			* ICMP Timeout
 			if (difftime(curtime, mappings->last_updated) >= nat->ICMP_timeout) {
 				if (prev_mapping == NULL){
 					nat->mappings = mappings->next;
@@ -236,7 +238,7 @@ void *sr_nat_timeout(void *nat_ptr) {  /* Periodic Timout handling */
 				mappings = mappings->next;
 			}
 		} else if (mappings->type == nat_mapping_tcp) {
-			* jhfjkkkkkkkkkkkkkkkkkgjhfkjlhjfgkf   k  hkfgjkh j *
+			
 		}
 	}
     
@@ -292,6 +294,7 @@ struct sr_nat_mapping *sr_nat_lookup_internal(struct sr_nat *nat,
 	if (nat->mappings) {
 		memcpy(copy, nat->mappings, sizeof(struct sr_nat_mapping));
 	} else {
+		free(copy);
 		pthread_mutex_unlock(&(nat->lock));
 		return NULL;
 	}
@@ -302,6 +305,7 @@ struct sr_nat_mapping *sr_nat_lookup_internal(struct sr_nat *nat,
 		}
 
 		if (copy->next == NULL){
+			free(copy);
 			pthread_mutex_unlock(&(nat->lock));
 			return NULL;
 		}

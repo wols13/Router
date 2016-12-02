@@ -139,7 +139,7 @@ int main(int argc, char **argv)
     { sr_set_user(&sr); }
     else
     { strncpy(sr.user, user, 32); }
-
+    printf("Loading routing table\n");
     /* -- set up file pointer for logging of raw packets -- */
     if(logfile != 0)
     {
@@ -173,19 +173,7 @@ int main(int argc, char **argv)
       sr_load_rt_wrap(&sr, rtable);
     }
     /* call router init (for arp subsystem etc.) */
-    sr_init(&sr);
-	/* NAT Setup */
-	if (sr.nat_enabled == 1){
-		if (sr_nat_init(&(sr.nat)) != 0){
-			fprintf(stderr,"Error setting up NAT\n");
-            exit(1);
-		}
-		printf("Yay!\n");
-                /* Set next port */
-		sr.nat.next_port = 1024;
-		printf("I HATE THIS\n");
-	}
-	
+    sr_init(&sr);	
 	
     /* -- whizbang main loop ;-) */
     while( sr_read_from_server(&sr) == 1);
@@ -330,18 +318,15 @@ int sr_verify_routing_table(struct sr_instance* sr)
     return ret;
 } /* -- sr_verify_routing_table -- */
 
-static void sr_load_rt_wrap(struct sr_instance* sr, char* rtable) {
-    printf("1111111111111111111111\n");  
+static void sr_load_rt_wrap(struct sr_instance* sr, char* rtable) { 
     if(sr_load_rt(sr, rtable) != 0) {
         fprintf(stderr,"Error setting up routing table from file %s\n",
                 rtable);
         exit(1);
     }
 
-
     printf("Loading routing table\n");
     printf("---------------------------------------------\n");
     sr_print_routing_table(sr);
     printf("---------------------------------------------\n");
-    printf("222222222222222222222222\n");
 }
