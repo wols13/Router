@@ -142,7 +142,7 @@ int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet, char* inter
 			icmp_hdr->icmp_sum = tempChecksum;
 		} else {
 			tcp_hdr->tcp_src_port = ntohs(lookup_result->aux_ext);
-			add_connection(&((*sr)->nat), lookup_result, ip_hdr->ip_dst, 0);
+			/* add_connection(&((*sr)->nat), lookup_result, ip_hdr->ip_dst, 0);*/
 			tcp_hdr->tcp_checksum = 0;
 			tempChecksum = cksum(tcp_hdr, ntohs(ip_hdr->ip_len) - ip_size);
 			tcp_hdr->tcp_checksum = tempChecksum;
@@ -156,7 +156,7 @@ int sr_nat_update_headers(struct sr_instance **sr, uint8_t **packet, char* inter
 }
 
 struct sr_nat_connection *add_connection(struct sr_nat *nat, struct sr_nat_mapping *mapping, uint32_t server_ip, int initializer){
-	/* Initializer: (0) NAT Host, (1) Server */
+	/* Initializer: (0) NAT Host, (1) Server 
 	pthread_mutex_lock(&(nat->lock));
 	
 	struct sr_nat_connection *new_conn = malloc(sizeof(struct sr_nat_connection));
@@ -191,7 +191,7 @@ struct sr_nat_connection *add_connection(struct sr_nat *nat, struct sr_nat_mappi
 		conn = conn->next;
 	}
 	pthread_mutex_unlock(&(nat->lock));
-	/* Should never get here */
+	 Should never get here */
 	return NULL;
 }
 
@@ -294,6 +294,7 @@ struct sr_nat_mapping *sr_nat_lookup_internal(struct sr_nat *nat,
 	if (nat->mappings) {
 		memcpy(copy, nat->mappings, sizeof(struct sr_nat_mapping));
 	} else {
+		free(copy);
 		pthread_mutex_unlock(&(nat->lock));
 		return NULL;
 	}
@@ -304,6 +305,7 @@ struct sr_nat_mapping *sr_nat_lookup_internal(struct sr_nat *nat,
 		}
 
 		if (copy->next == NULL){
+			free(copy);
 			pthread_mutex_unlock(&(nat->lock));
 			return NULL;
 		}
